@@ -45,14 +45,14 @@ class MainApp:
         self.b_Kommen = tk.Button(
             self.f_Button,
             text="Kommen",
-            command=saveKommen(self.varDate.get(), self.varTime.get()),
+            command=lambda: saveKommen(self.varDate.get(), self.varTime.get()),
         )
         self.b_Kommen.grid(row=0, column=0)
         # Button Gehen
         self.b_Gehen = tk.Button(
             self.f_Button,
             text="Gehen",
-            command=saveGehen(self.varDate.get(), self.varTime.get()),
+            command=lambda: saveGehen(self.varDate.get(), self.varTime.get()),
         )
         self.b_Gehen.grid(row=0, column=1)
 
@@ -72,15 +72,17 @@ def createDB():
     try:
         con = db_connect()  # connect to the database
         cur = con.cursor()  # initiate the obj cursor
-        worktime_sql = """
+        cur.execute(
+            """
         CREATE TABLE IF NOT EXISTS worktime (
-            Datum TEXT PRIMARY KEY,
-            Von TEXT,
-            Bis TEXT, 
-            Pause TEXT,
-            Gesamtzeit TEXT
+            DATUM TEXT PRIMARY KEY,
+            VON TEXT,
+            BIS TEXT, 
+            PAUSE TEXT,
+            ARBEITSZEIT TEXT,
+            UEBERSTUNDEN TEXT
         )"""
-        cur.execute(worktime_sql)
+        )
         cur.close()
     except sqlite3.Error as error:
         print("Failed to create database", error)
@@ -121,10 +123,9 @@ def entryUpdateEndHour(entry):
 
 def saveKommen(dat, tim):
     try:
-        sql_insert_kommen = "INSERT OR IGNORE INTO worktime(Datum,Von) VALUES(?,?)"
         con = db_connect()
         cur = con.cursor()
-        cur.execute(sql_insert_kommen, (dat, tim))
+        cur.execute("INSERT OR IGNORE INTO worktime(DATUM,VON) VALUES(?,?)", (dat, tim))
         con.commit()
         cur.close()
     except sqlite3.Error as error:
@@ -136,11 +137,9 @@ def saveKommen(dat, tim):
 
 def saveGehen(dat, tim):
     try:
-        sql_insert_gehen = "UPDATE worktime SET Bis=? WHERE Datum=?"
         con = db_connect()
         cur = con.cursor()
-        cur.execute(sql_insert_gehen, (tim, dat))
-        # calcWorktime(dat)
+        cur.execute("UPDATE worktime SET BIS=? WHERE DATUM=?", (tim, dat))
         con.commit()
         cur.close()
     except sqlite3.Error as error:
@@ -148,13 +147,34 @@ def saveGehen(dat, tim):
     finally:
         if con:
             con.close()
+        calcWorktime(dat)  # call calcWorktime
 
 
-"""
 def calcWorktime(date):
-    sql_select_von = "SELECT Von FROM worktime WHERE Datum=? "
-    sql_select_bis
-"""
+    try:
+        con = db_connect()
+        cur = con.cursor()
+        cur.execute(
+            "SELECT VON FROM worktime WHERE DATUM=?", [date]
+        )  # select von from row where date
+        select_von = cur.fetchone()
+        cur.execute(
+            "SELECT BIS FROM worktime WHERE DATUM=?", [date]
+        )  # select bis from row where date
+        select_bis = cur.fetchone()
+        delta = dt.datetime.strptime(select_bis[0], "%H:%M") - dt.datetime.strptime(
+            select_von[0], "%H:%M"
+        )
+        strdelta = str(delta)
+        cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
+        con.commit()
+        cur.close()
+
+    except sqlite3.Error as error:
+        print("Calculation of Worktime was not possible", error)
+    finally:
+        con.close()
+
 
 if __name__ == "__main__":
     createDB()
