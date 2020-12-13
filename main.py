@@ -27,8 +27,8 @@ class MainApp:
         # TimeperWeek Inputfield
         self.varTimeWeek = tk.StringVar()
         # self.varTimeWeek.set("35")
-        workweeksetting = loadSetting("workweekhours")
-        self.varTimeWeek.set(workweeksetting[0])
+        self.workweeksetting = loadSetting("workweekhours")
+        self.varTimeWeek.set(self.workweeksetting)
         self.e_TimePerWeek = tk.Entry(
             self.f_Input, textvariable=self.varTimeWeek, width=10
         )
