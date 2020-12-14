@@ -124,7 +124,7 @@ def createDB():
 
         CREATE TABLE IF NOT EXISTS settings (
             NAME TEXT PRIMARY KEY,
-            VALUE TEXT 
+            VALUE INTEGER 
         )"""
         )
 
@@ -278,14 +278,19 @@ def CalcOvertime(date):
         con = db_connect()
         cur = con.cursor()
         cur.execute("SELECT VALUE FROM settings WHERE NAME='workweekhours'")
-        weektime = cur.fetchone()
-        daytime = weektime[0] / 5
+        weekworktime = cur.fetchone()
+        dayworktime = weekworktime[0] / 5
+        dayworktime = dt.timedelta(hours=dayworktime)
         cur.execute("SELECT ARBEITSZEIT FROM worktime WHERE DATUM=?", [date])
-        select_arbeitszeit = cur.fetchone()
+        select_worktime = cur.fetchone()
+        worktime = dt.datetime.strptime(select_worktime[0], "%H:%M")
+        secworktime = (worktime.hour * 60 + worktime.minute) * 60
 
-        overtime = dt.datetime.strptime(select_arbeitszeit[0], "%H:%M") - dt.timedelta(
-            hours=daytime
-        )
+        # else statement geht nicht, falsche convertierung
+        if dayworktime.total_seconds() > secworktime:
+            overtime = worktime - dayworktime
+        else:
+            overtime = dt.datetime.strptime("24:00", "%H:%M") - (worktime - dayworktime)
 
         strovertime = dt.datetime.strftime(overtime, "%H:%M")
         cur.execute(
