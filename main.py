@@ -26,7 +26,7 @@ class MainApp:
         self.l_TimePerWeek.grid(row=0, column=0)
         # TimeperWeek Inputfield
         self.varTimeWeek = tk.StringVar()
-        # self.varTimeWeek.set("35")
+        self.varTimeWeek.set("35")
         self.workweeksetting = loadSetting("workweekhours")
         self.varTimeWeek.set(self.workweeksetting)
         self.e_TimePerWeek = tk.Entry(
@@ -127,7 +127,8 @@ def createDB():
         )"""
         )
         cur.execute(
-            "INSERT INTO settings(NAME,VALUE) VALUES(?,?)", ("workweekhours", 35)
+            "INSERT OR REPLACE INTO settings(NAME,VALUE) VALUES(?,?)",
+            ("workweekhours", 35),
         )
         con.commit()
         cur.close()
