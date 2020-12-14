@@ -121,15 +121,21 @@ def createDB():
         )
         cur.execute(
             """
+
         CREATE TABLE IF NOT EXISTS settings (
-            NAME TEXT,
-            VALUE NTEGER 
+            NAME TEXT PRIMARY KEY,
+            VALUE TEXT 
         )"""
         )
-        cur.execute(
-            "INSERT OR REPLACE INTO settings(NAME,VALUE) VALUES(?,?)",
-            ("workweekhours", 35),
-        )
+
+        cur.execute("SELECT * FROM settings WHERE NAME='workweekhours'")
+        entry = cur.fetchone()
+        if entry is None:
+            cur.execute(
+                "INSERT OR REPLACE INTO settings(NAME,VALUE) VALUES(?,?)",
+                ("workweekhours", 35),
+            )
+
         con.commit()
         cur.close()
     except sqlite3.Error as error:
@@ -256,7 +262,6 @@ def calcWorktime(date, didbreak):
             strdelta = strdelta[:4]
         else:
             strdelta = strdelta[:5]
-        print(strdelta)
         cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
         con.commit()
         cur.close()
@@ -269,31 +274,30 @@ def calcWorktime(date, didbreak):
 
 
 def CalcOvertime(date):
-    # try:
-    con = db_connect()
-    cur = con.cursor()
-    cur.execute("SELECT VALUE FROM settings WHERE NAME='workweekhours'")
-    weektime = cur.fetchone()
-    hoursWeektime = weektime[0]
-    hoursWeektime = dt.timedelta(hours=hoursWeektime)
-    print(hoursWeektime)
-    cur.execute("SELECT ARBEITSZEIT FROM worktime WHERE DATUM=?", [date])
-    select_arbeitszeit = cur.fetchone()
+    try:
+        con = db_connect()
+        cur = con.cursor()
+        cur.execute("SELECT VALUE FROM settings WHERE NAME='workweekhours'")
+        weektime = cur.fetchone()
+        daytime = weektime[0] / 5
+        cur.execute("SELECT ARBEITSZEIT FROM worktime WHERE DATUM=?", [date])
+        select_arbeitszeit = cur.fetchone()
 
-    overtime = dt.datetime.strptime(select_arbeitszeit[0], "%H:%M") - hoursWeektime
+        overtime = dt.datetime.strptime(select_arbeitszeit[0], "%H:%M") - dt.timedelta(
+            hours=daytime
+        )
 
-    strdelta = str(dt.datetime.strptime(delta, "%H:%M"))
-    cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
-    con.commit()
-    cur.close()
+        strovertime = dt.datetime.strftime(overtime, "%H:%M")
+        cur.execute(
+            "UPDATE worktime SET UEBERSTUNDEN=? WHERE DATUM=?", (strovertime, date)
+        )
+        con.commit()
+        cur.close()
 
-
-"""hoursWeektime
     except sqlite3.Error as error:
         print("Calculation of Worktime was not possible", error)
     finally:
         con.close()
-"""
 
 
 def loadSetting(name):
@@ -311,7 +315,9 @@ def loadSetting(name):
 
 
 if __name__ == "__main__":
+
     createDB()
+
     root = tk.Tk()
     app = MainApp(root)
     app.run()
