@@ -14,7 +14,7 @@ class MainApp:
         self.frame = tk.Frame(self.parent)
         # create the parent window
         self.parent.title("Worktimer")
-        self.parent.geometry("200x150")
+        self.parent.geometry("250x150")
 
         # createsub frames
         self.f_Input = tk.Frame(self.parent)
@@ -26,7 +26,6 @@ class MainApp:
         self.l_TimePerWeek.grid(row=0, column=0)
         # TimeperWeek Inputfield
         self.varTimeWeek = tk.StringVar()
-        self.varTimeWeek.set("35")
         self.workweeksetting = loadSetting("workweekhours")
         self.varTimeWeek.set(self.workweeksetting)
         self.e_TimePerWeek = tk.Entry(
@@ -74,6 +73,7 @@ class MainApp:
         self.b_BreakNo = tk.Radiobutton(
             self.f_Input, text="Nein", variable=self.varBreak, value=0
         )
+        self.varBreak.set(1)
         self.b_BreakNo.grid(row=4, column=1)
         # Button Kommen
         self.b_Kommen = tk.Button(
@@ -220,6 +220,7 @@ def insertWeekhours(weekhours):
             "UPDATE settings SET VALUE=? WHERE NAME=?",
             (weekhours, "workweekhours"),
         )
+        con.commit()
         cur.close()
     except sqlite3.Error as error:
         print("Inserting of Weekhours did not work", error)
@@ -243,13 +244,19 @@ def calcWorktime(date, didbreak):
             select_von[0], "%H:%M"
         )
         if didbreak == 1:
-            if delta >= dt.timedelta(hours=8):
+            if delta > dt.timedelta(hours=6):
                 delta = delta - dt.timedelta(hours=1)
-            elif delta <= dt.timedelta(hours=8) and delta >= dt.timedelta(hours=5):
-                delta = delta - dt.timedelta(hours=0, minutes=30)
+            elif delta <= dt.timedelta(hours=6) and delta > dt.timedelta(
+                hours=4, minutes=30
+            ):
+                delta = delta - dt.timedelta(hours=0, minutes=15)
 
         strdelta = str(delta)
-
+        if strdelta[1] == ":":
+            strdelta = strdelta[:4]
+        else:
+            strdelta = strdelta[:5]
+        print(strdelta)
         cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
         con.commit()
         cur.close()
@@ -262,27 +269,31 @@ def calcWorktime(date, didbreak):
 
 
 def CalcOvertime(date):
-    try:
-        con = db_connect()
-        cur = con.cursor()
-        cur.execute("SELECT VALUE FROM settings WHERE NAME=?", "workweekhours")
-        weektime = cur.fetchone()
-        timePerDay = weektime / 5
-        cur.execute("SELECT ARBEITSZEIT FROM worktime WHERE DATUM=?", [date])
-        select_arbeitszeit = cur.fetchone()
-        delta = dt.datetime.strptime(
-            select_arbeitszeit[0], "%H:%M"
-        ) - dt.datetime.strptime(timePerDay)
+    # try:
+    con = db_connect()
+    cur = con.cursor()
+    cur.execute("SELECT VALUE FROM settings WHERE NAME='workweekhours'")
+    weektime = cur.fetchone()
+    hoursWeektime = weektime[0]
+    hoursWeektime = dt.timedelta(hours=hoursWeektime)
+    print(hoursWeektime)
+    cur.execute("SELECT ARBEITSZEIT FROM worktime WHERE DATUM=?", [date])
+    select_arbeitszeit = cur.fetchone()
 
-        strdelta = str(delta)
-        cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
-        con.commit()
-        cur.close()
+    overtime = dt.datetime.strptime(select_arbeitszeit[0], "%H:%M") - hoursWeektime
 
+    strdelta = str(dt.datetime.strptime(delta, "%H:%M"))
+    cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
+    con.commit()
+    cur.close()
+
+
+"""hoursWeektime
     except sqlite3.Error as error:
         print("Calculation of Worktime was not possible", error)
     finally:
         con.close()
+"""
 
 
 def loadSetting(name):
