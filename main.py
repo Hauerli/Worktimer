@@ -290,9 +290,12 @@ def CalcOvertime(date):
         if dayworktime.total_seconds() > secworktime:
             overtime = worktime - dayworktime
         else:
-            overtime = dt.datetime.strptime("24:00", "%H:%M") - (worktime - dayworktime)
+            oneday = dt.datetime.strptime(
+                str(dt.timedelta(seconds=86399))[0:5], "%H:%M"
+            )
+            overtime = oneday - (worktime - dayworktime)
 
-        strovertime = dt.datetime.strftime(overtime, "%H:%M")
+        strovertime = dt.datetime.strptime(str(overtime)[0:5], "%H:%M")
         cur.execute(
             "UPDATE worktime SET UEBERSTUNDEN=? WHERE DATUM=?", (strovertime, date)
         )
@@ -320,9 +323,11 @@ def loadSetting(name):
 
 
 if __name__ == "__main__":
-
     createDB()
 
     root = tk.Tk()
     app = MainApp(root)
     app.run()
+
+    # overtime = dt.datetime.strptime(str(dt.timedelta(seconds=86399))[0:5], "%H:%M")
+    # print(str(overtime))
