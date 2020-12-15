@@ -260,6 +260,7 @@ def calcWorktime(date, didbreak):
         strdelta = str(delta)
         if strdelta[1] == ":":
             strdelta = strdelta[:4]
+            strdelta = "0" + strdelta
         else:
             strdelta = strdelta[:5]
         cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
@@ -287,17 +288,21 @@ def CalcOvertime(date):
         secworktime = (worktime.hour * 60 + worktime.minute) * 60
 
         # else statement geht nicht, falsche convertierung
-        if dayworktime.total_seconds() > secworktime:
+        if dayworktime.total_seconds() < secworktime:
             overtime = worktime - dayworktime
+            strovertime = dt.datetime.strptime(str(overtime)[11:16], "%H:%M")
+            overtimefinal = "+" + str(strovertime)[11:16]
         else:
             oneday = dt.datetime.strptime(
-                str(dt.timedelta(seconds=86399))[0:5], "%H:%M"
+                str(dt.timedelta(seconds=86341))[0:5], "%H:%M"
             )
             overtime = oneday - (worktime - dayworktime)
+            overtime = overtime + dt.timedelta(seconds=60)
+            strovertime = dt.datetime.strptime(str(overtime)[7:11], "%H:%M")
+            overtimefinal = "-" + str(strovertime)[11:16]
 
-        strovertime = dt.datetime.strptime(str(overtime)[0:5], "%H:%M")
         cur.execute(
-            "UPDATE worktime SET UEBERSTUNDEN=? WHERE DATUM=?", (strovertime, date)
+            "UPDATE worktime SET UEBERSTUNDEN=? WHERE DATUM=?", (overtimefinal, date)
         )
         con.commit()
         cur.close()
@@ -328,6 +333,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = MainApp(root)
     app.run()
-
-    # overtime = dt.datetime.strptime(str(dt.timedelta(seconds=86399))[0:5], "%H:%M")
-    # print(str(overtime))
