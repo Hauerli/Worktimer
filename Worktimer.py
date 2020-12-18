@@ -1,25 +1,28 @@
 import datetime as dt
 import tkinter as tk
+import tkinter.ttk as ttk
 import sqlite3
-import os
-
-DEFAULT_PATH = os.path.join(
-    os.path.dirname(__file__), "database.sqlite3"
-)  # define dfilepath to be identical to folder
+import database as db
 
 
 class MainApp:
     def __init__(self, parent):
         self.parent = parent
-        self.frame = tk.Frame(self.parent)
         # create the parent window
         self.parent.title("Worktimer")
-        self.parent.geometry("250x150")
-
+        # self.parent.geometry("250x200")
+        # Define Tabs
+        self.tab_parent = ttk.Notebook(self.parent)
+        self.frame = tk.Frame(self.tab_parent)
+        self.t_main = tk.Frame(self.tab_parent)
+        self.t_overview = tk.Frame(self.tab_parent)
+        self.tab_parent.add(self.t_main, text="Worktimer")
+        self.tab_parent.add(self.t_overview, text="Uebersicht")
+        self.tab_parent.grid(row=0, column=0, sticky="nsew")
         # createsub frames
-        self.f_Input = tk.Frame(self.parent)
+        self.f_Input = tk.Frame(self.t_main)
         self.f_Input.grid(row=0, column=0)
-        self.f_Button = tk.Frame(self.parent)
+        self.f_Button = tk.Frame(self.t_main)
         self.f_Button.grid(row=1, column=0)
         # TimeperWeek label
         self.l_TimePerWeek = tk.Label(self.f_Input, text="Arbeitszeit/Woche:")
@@ -92,63 +95,48 @@ class MainApp:
         )
         self.b_Gehen.grid(row=0, column=1)
 
+        # Build tableview
+        view_columns = ("DATUM", "VON", "BIS", "PAUSE", "ARBEITSZEIT", "UEBERSTUNDEN")
+        entrys = loadOverview()
+        tree = ttk.Treeview(self.t_overview, columns=view_columns, show="headings")
+        for entry in entrys:
+            tree.insert(
+                "",
+                "end",
+                values=(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5]),
+            )
+        for col in view_columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=70)
+        tree.grid(row=1, column=0, columnspan=2)
+
     def run(self):
         self.parent.mainloop()
 
     def kill(self):
         self.parent.destroy()
 
+    def show_frame(self, page_name):
+        """Show a frame for the given page name"""
+        for frame in self.frames.values():
+            frame.grid_remove()
+        frame = self.frames[page_name]
+        frame.grid()
 
-def db_connect(db_path=DEFAULT_PATH):  # module to create hte db
+
+def loadOverview():
+    con = db.db_connect()
+    cur = con.cursor()
+    cur.row_factory = lambda cursor, row: row[0:6]
+    worklist = cur.execute("SELECT * FROM worktime").fetchall()
+    return worklist
+
+
+"""
+def db.db_connect()(db_path=DEFAULT_PATH):  # module to create hte db
     con = sqlite3.connect(db_path)
     return con
-
-
-def createDB():
-    try:
-        con = db_connect()  # connect to the database
-        cur = con.cursor()  # initiate the obj cursor
-        cur.execute(
-            """
-        CREATE TABLE IF NOT EXISTS worktime (
-            DATUM TEXT PRIMARY KEY,
-            VON TEXT,
-            BIS TEXT, 
-            PAUSE TEXT,
-            ARBEITSZEIT TEXT,
-            UEBERSTUNDEN TEXT
-        )"""
-        )
-        cur.execute(
-            """
-
-        CREATE TABLE IF NOT EXISTS settings (
-            NAME TEXT PRIMARY KEY,
-            VALUE INTEGER 
-        )"""
-        )
-
-        cur.execute("SELECT * FROM settings WHERE NAME='workweekhours'")
-        entry = cur.fetchone()
-        if entry is None:
-            cur.execute(
-                "INSERT OR REPLACE INTO settings(NAME,VALUE) VALUES(?,?)",
-                ("workweekhours", 35),
-            )
-
-        con.commit()
-        cur.close()
-    except sqlite3.Error as error:
-        print("Failed to create database", error)
-    finally:
-        if con:
-            con.close()
-
-
-# Load current Date from system to preload field
-def getCurrDate():
-    currDate = dt.date.today().strftime("%d.%m.%Y")
-    return currDate
+"""
 
 
 # Load current Time from system to preload field
@@ -156,6 +144,12 @@ def getCurrTime():
     currTime = str(dt.datetime.now().time())
     currTime = currTime[:5]
     return currTime
+
+
+# Load current Date from system to preload field
+def getCurrDate():
+    currDate = dt.date.today().strftime("%d.%m.%Y")
+    return currDate
 
 
 # reload entryfield to format to time
@@ -177,7 +171,7 @@ def entryUpdateEndHour(entry):
 
 def saveKommen(dat, tim):
     try:
-        con = db_connect()
+        con = db.db_connect()
         cur = con.cursor()
         cur.execute("INSERT OR IGNORE INTO worktime(DATUM,VON) VALUES(?,?)", (dat, tim))
         con.commit()
@@ -192,7 +186,7 @@ def saveKommen(dat, tim):
 
 def saveGehen(dat, tim, didbreak):
     try:
-        con = db_connect()
+        con = db.db_connect()
         cur = con.cursor()
         cur.execute("UPDATE worktime SET BIS=? WHERE DATUM=?", (tim, dat))
 
@@ -217,7 +211,7 @@ def insertBreak(dat, didbreak, con, cur):
 
 def insertWeekhours(weekhours):
     try:
-        con = db_connect()
+        con = db.db_connect()
         cur = con.cursor()
         cur.execute(
             "UPDATE settings SET VALUE=? WHERE NAME=?",
@@ -303,7 +297,7 @@ def CalcOvertime(date, con, cur):
 
 def loadSetting(name):
     try:
-        con = db_connect()
+        con = db.db_connect()
         cur = con.cursor()
         cur.execute("SELECT VALUE FROM settings WHERE NAME=?", [name])
         value = cur.fetchone()
@@ -319,7 +313,7 @@ def loadSetting(name):
 
 
 if __name__ == "__main__":
-    createDB()
+    db.createDB()
 
     root = tk.Tk()
     app = MainApp(root)
