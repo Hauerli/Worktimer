@@ -12,10 +12,9 @@ class MainApp:
         self.parent.title("Worktimer")
         # self.parent.geometry("250x200")
         # Define Tabs
-        self.tab_parent = ttk.Notebook(self.parent)
-        self.frame = tk.Frame(self.tab_parent)
-        self.t_main = tk.Frame(self.tab_parent)
-        self.t_overview = tk.Frame(self.tab_parent)
+        self.tab_parent = Autoresized_Notebook(self.parent)
+        self.t_main = tk.Frame()
+        self.t_overview = tk.Frame()
         self.tab_parent.add(self.t_main, text="Worktimer")
         self.tab_parent.add(self.t_overview, text="Uebersicht")
         self.tab_parent.grid(row=0, column=0, sticky="nsew")
@@ -116,12 +115,18 @@ class MainApp:
     def kill(self):
         self.parent.destroy()
 
-    def show_frame(self, page_name):
-        """Show a frame for the given page name"""
-        for frame in self.frames.values():
-            frame.grid_remove()
-        frame = self.frames[page_name]
-        frame.grid()
+
+class Autoresized_Notebook(ttk.Notebook):
+    def __init__(self, master=None, **kw):
+
+        ttk.Notebook.__init__(self, master, **kw)
+        self.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+    def _on_tab_changed(self, event):
+        event.widget.update_idletasks()
+
+        tab = event.widget.nametowidget(event.widget.select())
+        event.widget.configure(height=tab.winfo_reqheight(), width=tab.winfo_reqwidth())
 
 
 def loadOverview():
