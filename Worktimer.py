@@ -95,19 +95,20 @@ class MainApp:
         self.b_Gehen.grid(row=0, column=1)
 
         # Build tableview
+        self.b_refresh = tk.Button(
+            self.t_overview,
+            text="Aktualisieren",
+            command=lambda: [
+                cleanTreeview(self.t_overview),
+                buildTreeview(self.t_overview, view_columns, loadOverview()),
+            ],
+        )
+        self.b_refresh.grid(column=0, row=0, sticky="we", columnspan=2)
         view_columns = ("DATUM", "VON", "BIS", "PAUSE", "ARBEITSZEIT", "UEBERSTUNDEN")
-        entrys = loadOverview()
-        tree = ttk.Treeview(self.t_overview, columns=view_columns, show="headings")
-        for entry in entrys:
-            tree.insert(
-                "",
-                "end",
-                values=(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5]),
-            )
-        for col in view_columns:
-            tree.heading(col, text=col)
-            tree.column(col, width=70)
-        tree.grid(row=1, column=0, columnspan=2)
+        # entrys = loadOverview()
+        # tree = ttk.Treeview(self.t_overview, columns=view_columns, show="headings")
+
+        buildTreeview(self.t_overview, view_columns, loadOverview())
 
     def run(self):
         self.parent.mainloop()
@@ -127,6 +128,27 @@ class Autoresized_Notebook(ttk.Notebook):
 
         tab = event.widget.nametowidget(event.widget.select())
         event.widget.configure(height=tab.winfo_reqheight(), width=tab.winfo_reqwidth())
+
+
+def cleanTreeview(wid):
+    for widget in wid.winfo_children():
+        if isinstance(widget, ttk.Treeview):
+            widget.delete(*widget.get_children())
+
+
+def buildTreeview(parent, columnames, entrys):
+
+    tree = ttk.Treeview(parent, columns=columnames, show="headings")
+    for entry in entrys:
+        tree.insert(
+            "",
+            "end",
+            values=(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5]),
+        )
+    for col in columnames:
+        tree.heading(col, text=col)
+        tree.column(col, width=70)
+    tree.grid(row=1, column=0, columnspan=2)
 
 
 def loadOverview():
