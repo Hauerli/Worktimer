@@ -117,6 +117,7 @@ class MainApp:
         self.parent.destroy()
 
 
+# Resize Window based on active tab size
 class Autoresized_Notebook(ttk.Notebook):
     def __init__(self, master=None, **kw):
 
@@ -130,14 +131,15 @@ class Autoresized_Notebook(ttk.Notebook):
         event.widget.configure(height=tab.winfo_reqheight(), width=tab.winfo_reqwidth())
 
 
+# remove all entries from Treeview
 def cleanTreeview(wid):
     for widget in wid.winfo_children():
         if isinstance(widget, ttk.Treeview):
             widget.delete(*widget.get_children())
 
 
+# Create and insert values into treeview
 def buildTreeview(parent, columnames, entrys):
-
     tree = ttk.Treeview(parent, columns=columnames, show="headings")
     for entry in entrys:
         tree.insert(
@@ -151,19 +153,13 @@ def buildTreeview(parent, columnames, entrys):
     tree.grid(row=1, column=0, columnspan=2)
 
 
+# Load all db entries
 def loadOverview():
     con = db.db_connect()
     cur = con.cursor()
     cur.row_factory = lambda cursor, row: row[0:6]
     worklist = cur.execute("SELECT * FROM worktime").fetchall()
     return worklist
-
-
-"""
-def db.db_connect()(db_path=DEFAULT_PATH):  # module to create hte db
-    con = sqlite3.connect(db_path)
-    return con
-"""
 
 
 # Load current Time from system to preload field
