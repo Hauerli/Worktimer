@@ -5,6 +5,16 @@ import sqlite3
 import database as db
 
 
+""" TO_DO LIST 
+* Delete Button on Overview Frame + Opt in
+* Settingspage - Move Weekhours on the Page 
+* Settingspage - Autoclose option
+* Overview - Sum Overtime 
+* Bug Time field 
+
+"""
+
+
 class MainApp:
     def __init__(self, parent):
         self.parent = parent
