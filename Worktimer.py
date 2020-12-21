@@ -105,6 +105,12 @@ class MainApp:
         self.b_Gehen.grid(row=0, column=1)
 
         # Build tableview
+        self.l_overtime = tk.Label(self.t_overview, text="Ueberstd. gesamt: ")
+        self.l_overtime.grid(column=0, row=0, sticky="w")
+        self.e_overtime = tk.Entry(self.t_overview)
+        self.e_overtime.configure(state="readonly")
+        self.e_overtime.grid(column=1, row=0, sticky="w")
+        # Refresh Button
         self.b_refresh = tk.Button(
             self.t_overview,
             text="Aktualisieren",
@@ -113,8 +119,8 @@ class MainApp:
                 buildTreeview(self.t_overview, view_columns, loadOverview()),
             ],
         )
-        self.b_refresh.grid(column=0, row=0, sticky="we", columnspan=2)
-        view_columns = ("DATUM", "VON", "BIS", "PAUSE", "ARBEITSZEIT", "UEBERSTUNDEN")
+        self.b_refresh.grid(column=0, row=2, sticky="we", columnspan=2)
+        view_columns = ("DATUM", "VON", "BIS", "PAUSE", "ARBEITSZEIT", "UEBERSTD")
         # entrys = loadOverview()
         # tree = ttk.Treeview(self.t_overview, columns=view_columns, show="headings")
 
@@ -141,6 +147,9 @@ class Autoresized_Notebook(ttk.Notebook):
         event.widget.configure(height=tab.winfo_reqheight(), width=tab.winfo_reqwidth())
 
 
+def calcAllOvertime():
+
+
 # remove all entries from Treeview
 def cleanTreeview(wid):
     for widget in wid.winfo_children():
@@ -159,7 +168,7 @@ def buildTreeview(parent, columnames, entrys):
         )
     for col in columnames:
         tree.heading(col, text=col)
-        tree.column(col, width=70)
+        tree.column(col, width=80)
     tree.grid(row=1, column=0, columnspan=2)
 
 
