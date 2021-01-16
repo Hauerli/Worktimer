@@ -37,24 +37,7 @@ class MainApp:
         self.f_Input.grid(row=0, column=0)
         self.f_Button = tk.Frame(self.t_main)
         self.f_Button.grid(row=1, column=0)
-        # TimeperWeek label
-        self.l_TimePerWeek = tk.Label(self.f_Input, text="Arbeitszeit/Woche:")
-        self.l_TimePerWeek.grid(row=0, column=0)
-        # TimeperWeek Inputfield
-        self.varTimeWeek = tk.StringVar()
-        self.workweeksetting = loadSetting("workweekhours")
-        self.varTimeWeek.set(self.workweeksetting)
-        self.e_TimePerWeek = tk.Entry(
-            self.f_Input, textvariable=self.varTimeWeek, width=10
-        )
-        self.e_TimePerWeek.grid(row=0, column=1)
-        # TimeperWeek Button
-        self.b_SaveTimeWeek = tk.Button(
-            self.f_Input,
-            text="Save",
-            command=lambda: insertWeekhours(self.varTimeWeek.get()),
-        )
-        self.b_SaveTimeWeek.grid(row=0, column=3)
+        ########################## MAIN FRAME #####################
         # Date Label
         self.l_Date = tk.Label(self.f_Input, text="Datum:")
         self.l_Date.grid(row=1, column=0)
@@ -128,7 +111,7 @@ class MainApp:
             ),
         )
         self.b_Gehen.grid(row=0, column=1)
-
+        ######### OVERVIEW FRAME ###############################
         # Build tableview
         self.l_overtime = tk.Label(self.t_overview, text="Ueberstd. gesamt: ")
         self.l_overtime.grid(column=0, row=0, sticky="w")
@@ -151,10 +134,26 @@ class MainApp:
         )
         self.b_refresh.grid(column=0, row=2, sticky="we", columnspan=2)
         view_columns = ("DATUM", "VON", "BIS", "PAUSE", "ARBEITSZEIT", "UEBERSTD")
-        # entrys = loadOverview()
-        # tree = ttk.Treeview(self.t_overview, columns=view_columns, show="headings")
-
         buildTreeview(self.t_overview, view_columns, loadOverview())
+        #########CUSTOMIZING FRAME ####################
+        # TimeperWeek label
+        self.l_TimePerWeek = tk.Label(self.t_customizing, text="Arbeitszeit/Woche:")
+        self.l_TimePerWeek.grid(row=0, column=0)
+        # TimeperWeek Inputfield
+        self.varTimeWeek = tk.StringVar()
+        self.workweeksetting = loadSetting("workweekhours")
+        self.varTimeWeek.set(self.workweeksetting)
+        self.e_TimePerWeek = tk.Entry(
+            self.t_customizing, textvariable=self.varTimeWeek, width=10
+        )
+        self.e_TimePerWeek.grid(row=0, column=1)
+        # TimeperWeek Button
+        self.b_SaveTimeWeek = tk.Button(
+            self.t_customizing,
+            text="Save",
+            command=lambda: insertWeekhours(self.varTimeWeek.get()),
+        )
+        self.b_SaveTimeWeek.grid(row=0, column=3)
 
     def run(self):
         self.parent.mainloop()
