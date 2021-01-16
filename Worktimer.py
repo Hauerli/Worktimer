@@ -147,9 +147,6 @@ class Autoresized_Notebook(ttk.Notebook):
         event.widget.configure(height=tab.winfo_reqheight(), width=tab.winfo_reqwidth())
 
 
-def calcAllOvertime():
-
-
 # remove all entries from Treeview
 def cleanTreeview(wid):
     for widget in wid.winfo_children():
@@ -279,26 +276,26 @@ def calcWorktime(date, didbreak, con, cur):
             "SELECT BIS FROM worktime WHERE DATUM=?", [date]
         )  # select bis from row where date
         select_bis = cur.fetchone()
-        delta = dt.datetime.strptime(select_bis[0], "%H:%M") - dt.datetime.strptime(
-            select_von[0], "%H:%M"
-        )
-        if didbreak == 1:
-            if delta > dt.timedelta(hours=6):
-                delta = delta - dt.timedelta(hours=1)
-            elif delta <= dt.timedelta(hours=6) and delta > dt.timedelta(
-                hours=4, minutes=30
-            ):
-                delta = delta - dt.timedelta(hours=0, minutes=15)
 
-        strdelta = str(delta)
-        if strdelta[1] == ":":
-            strdelta = strdelta[:4]
-            strdelta = "0" + strdelta
-        else:
-            strdelta = strdelta[:5]
-        cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strdelta, date))
+        vonInMinutes = convertTimetoMinutes(select_von)
+        bisInMinutes = convertTimetoMinutes(select_bis)
+
+        deltaInMinutes = bisInMinutes - vonInMinutes
+
+        # Wenn Pause True
+        if didbreak == 1:
+            if deltaInMinutes > 360:  # if worktime bigger than 6 hours
+                deltaInMinutes = deltaInMinutes - 60
+            elif (
+                deltaInMinutes <= 360 and deltaInMinutes > 270
+            ):  # if worktime between 5:59 hours and 4:30 hours
+                deltaInMinutes = deltaInMinutes - 15
+
+        strTime = convertMinutestoTimeString(deltaInMinutes)
+
+        cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strTime, date))
         con.commit()
-        CalcOvertime(date, con, cur)
+        # CalcOvertime(date, con, cur)
 
     except sqlite3.Error as error:
         print("Module calcWorktime: ", error)
@@ -352,6 +349,37 @@ def loadSetting(name):
             cur.close()
         if con:
             con.close()
+
+
+def convertTimetoMinutes(time):
+
+    listTime = time[0].split(":")
+
+    hoursToMinutes = int(listTime[0]) * 60
+    overallMinutes = hoursToMinutes + int(listTime[1])
+
+    return overallMinutes
+
+
+def convertMinutestoTimeString(timeInMinutes):
+
+    minutes = timeInMinutes % 60
+    hours = int((timeInMinutes - minutes) / 60)
+
+    # add 0 in front of number smaller than 10
+    if hours < 10:
+        hours = "0" + str(hours)
+    else:
+        hours = str(hours)
+
+    # add 0 in front of number smaller than 10
+    if minutes < 10:
+        minutes = "0" + str(minutes)
+    else:
+        minutes = str(minutes)
+
+    time = hours + ":" + minutes
+    return time
 
 
 if __name__ == "__main__":
