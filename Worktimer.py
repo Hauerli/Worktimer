@@ -4,6 +4,8 @@ from tkinter import messagebox
 import tkinter.ttk as ttk
 import sqlite3
 import database as db
+import xlsxwriter
+from datetime import date
 
 
 """ TO_DO LIST 
@@ -151,26 +153,45 @@ class MainApp:
         # TimeperWeek Button
         self.b_SaveTimeWeek = tk.Button(
             self.t_customizing,
-            text="Save",
+            text="Speichern",
             width=7,
             command=lambda: insertWeekhours(self.varTimeWeek.get()),
         )
         self.b_SaveTimeWeek.grid(row=0, column=2)
         # Update Label
-        self.l_deleteRow = tk.Label(self.t_customizing, text="Delete Date: ")
+        self.l_deleteRow = tk.Label(self.t_customizing, text="Lösche Datum: ")
         self.l_deleteRow.grid(row=1, column=0)
+        # update entry
         self.varDeleteRow = tk.StringVar()
         self.e_DeleteRow = tk.Entry(
             self.t_customizing, textvariable=self.varDeleteRow, width=10
         )
         self.e_DeleteRow.grid(row=1, column=1)
+        # update button
         self.b_DeleteRow = tk.Button(
             self.t_customizing,
-            text="Delete",
+            text="Löschen",
             width=7,
             command=lambda: deleteDate(self.varDeleteRow.get()),
         )
         self.b_DeleteRow.grid(row=1, column=2)
+        # export label
+        self.l_export = tk.Label(self.t_customizing, text="Export Pfad: ")
+        self.l_export.grid(row=2, column=0)
+        # export entry
+        self.varExport = tk.StringVar()
+        self.e_export = tk.Entry(
+            self.t_customizing, textvariable=self.varExport, width=10
+        )
+        self.e_export.grid(row=2, column=1)
+        # export button
+        self.b_export = tk.Button(
+            self.t_customizing,
+            text="Export",
+            width=7,
+            command=lambda: createExcelFile(self.varExport.get()),
+        )
+        self.b_export.grid(row=2, column=2)
 
     def run(self):
         self.parent.mainloop()
@@ -308,7 +329,6 @@ def saveGehen(dat, tim, didbreak, custombreak):
             cur.close()
         if con:
             con.close()
-
 
 
 def insertWeekhours(weekhours):
@@ -498,9 +518,50 @@ def convertMinutestoTimeString(timeInMinutes):
     return time
 
 
-if __name__ == "__main__":
-    db.createDB()
+# Export all data form file into Excel
+def createExcelFile(path):
+    try:
 
+        con = db.db_connect()
+        cur = con.cursor()
+
+        cur.execute("SELECT * FROM worktime")
+        data = cur.fetchall()
+
+        path = path.replace("\\", "/")
+
+        if path[:-1] != "/":
+            path = path + "/"
+
+        today = date.today()
+        workbook = xlsxwriter.Workbook(
+            path + "Worktimer_Export_" + today.strftime("%d_%m_%Y") + ".xlsx"
+        )
+        worksheet = workbook.add_worksheet("Arbeitszeiten")
+
+        row = 1
+
+        for entry in data:
+            for column, value in enumerate(entry):
+                worksheet.write(row, column, value)
+            row += 1
+
+        workbook.close()
+        messagebox.showinfo(
+            "Info", "Arbeitszeiten erfolgreich exportiert nach " + path[:-1]
+        )
+    except sqlite3.Error as error:
+        messagebox.showerror("Module createExcelFile", error)
+    finally:
+        if cur:
+            cur.close()
+        if con:
+            con.close()
+
+
+if __name__ == "__main__":
+
+    db.createDB()
     root = tk.Tk()
     app = MainApp(root)
     app.run()
