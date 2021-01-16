@@ -29,9 +29,9 @@ class MainApp:
         self.t_main = tk.Frame()
         self.t_overview = tk.Frame()
         self.t_customizing = tk.Frame()
-        self.tab_parent.add(self.t_main, text="Worktimer")
-        self.tab_parent.add(self.t_overview, text="Uebersicht")
-        self.tab_parent.add(self.t_customizing, text="Individualisierung")
+        self.tab_parent.add(self.t_main, text="Stempeluhr")
+        self.tab_parent.add(self.t_overview, text="Übersicht")
+        self.tab_parent.add(self.t_customizing, text="Anpassung")
         self.tab_parent.grid(row=0, column=0, sticky="nsew")
         # createsub frames
         self.f_Input = tk.Frame(
