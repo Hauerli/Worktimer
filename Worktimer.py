@@ -107,7 +107,11 @@ class MainApp:
         # Build tableview
         self.l_overtime = tk.Label(self.t_overview, text="Ueberstd. gesamt: ")
         self.l_overtime.grid(column=0, row=0, sticky="w")
-        self.e_overtime = tk.Entry(self.t_overview)
+        self.varOverallOvertime = tk.StringVar()
+        self.e_overtime = tk.Entry(
+            self.t_overview, textvariable=self.varOverallOvertime
+        )
+        self.varOverallOvertime.set(calcOverallOvertime())
         self.e_overtime.configure(state="readonly")
         self.e_overtime.grid(column=1, row=0, sticky="w")
         # Refresh Button
@@ -117,6 +121,7 @@ class MainApp:
             command=lambda: [
                 cleanTreeview(self.t_overview),
                 buildTreeview(self.t_overview, view_columns, loadOverview()),
+                self.varOverallOvertime.set(calcOverallOvertime()),
             ],
         )
         self.b_refresh.grid(column=0, row=2, sticky="we", columnspan=2)
@@ -295,7 +300,7 @@ def calcWorktime(date, didbreak, con, cur):
 
         cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strTime, date))
         con.commit()
-        # CalcOvertime(date, con, cur)
+        CalcOvertime(date, con, cur)
 
     except sqlite3.Error as error:
         print("Module calcWorktime: ", error)
@@ -305,33 +310,73 @@ def CalcOvertime(date, con, cur):
     try:
         cur.execute("SELECT VALUE FROM settings WHERE NAME='workweekhours'")
         weekworktime = cur.fetchone()
-        dayworktime = weekworktime[0] / 5
-        dayworktime = dt.timedelta(hours=dayworktime)
+        dayworktimeInMinutes = (int(weekworktime[0]) * 60) / 5
+
         cur.execute("SELECT ARBEITSZEIT FROM worktime WHERE DATUM=?", [date])
         select_worktime = cur.fetchone()
-        worktime = dt.datetime.strptime(select_worktime[0], "%H:%M")
-        secworktime = (worktime.hour * 60 + worktime.minute) * 60
 
-        # else statement geht nicht, falsche convertierung
-        if dayworktime.total_seconds() < secworktime:
-            overtime = worktime - dayworktime
-            strovertime = dt.datetime.strptime(str(overtime)[11:16], "%H:%M")
-            overtimefinal = "+" + str(strovertime)[11:16]
+        workTimeInMinutes = convertTimetoMinutes(select_worktime)
+
+        if dayworktimeInMinutes < workTimeInMinutes:
+            overtime = workTimeInMinutes - dayworktimeInMinutes
+            overtime = convertMinutestoTimeString(overtime)
+            overtimerfinal = "+" + overtime
         else:
-            oneday = dt.datetime.strptime(
-                str(dt.timedelta(seconds=86341))[0:5], "%H:%M"
-            )
-            overtime = oneday - (worktime - dayworktime)
-            overtime = overtime + dt.timedelta(seconds=60)
-            strovertime = dt.datetime.strptime(str(overtime)[7:11], "%H:%M")
-            overtimefinal = "-" + str(strovertime)[11:16]
+            overtime = dayworktimeInMinutes - workTimeInMinutes
+            overtime = convertMinutestoTimeString(overtime)
+            overtimerfinal = "-" + overtime
 
         cur.execute(
-            "UPDATE worktime SET UEBERSTUNDEN=? WHERE DATUM=?", (overtimefinal, date)
+            "UPDATE worktime SET UEBERSTUNDEN=? WHERE DATUM=?", (overtimerfinal, date)
         )
         con.commit()
     except sqlite3.Error as error:
         print("Module CalcOvertime: ", error)
+
+
+def calcOverallOvertime():
+    positivOvertime = 0
+    negativeOvertime = 0
+    overallPrefix = ""
+
+    try:
+        con = db.db_connect()
+        cur = con.cursor()
+        cur.execute("SELECT UEBERSTUNDEN FROM worktime")
+        listOvertimes = cur.fetchall()
+
+        for time in listOvertimes:
+            if time[0] is not None:
+                strTime = time[0]
+                prefix = strTime[0:1]
+                newTime = strTime[1:]
+                if prefix == "+":
+                    timeInMinutes = convertTimetoMinutes(newTime)
+                    positivOvertime = positivOvertime + timeInMinutes
+                else:
+                    timeInMinutes = convertTimetoMinutes(newTime)
+                    negativeOvertime = negativeOvertime + timeInMinutes
+
+        if positivOvertime > negativeOvertime:
+            intSum = positivOvertime - negativeOvertime
+            overallPrefix = "+"
+        elif negativeOvertime > positivOvertime:
+            intSum = negativeOvertime - positivOvertime
+            overallPrefix = "-"
+        else:
+            intSum = 0
+
+        strOverallOvertime = convertMinutestoTimeString(intSum)
+
+        return overallPrefix + str(strOverallOvertime)
+
+    except sqlite3.Error as error:
+        print("Module calcOverallOvertime: ", error)
+    finally:
+        if cur:
+            cur.close()
+        if con:
+            con.close()
 
 
 def loadSetting(name):
@@ -353,7 +398,10 @@ def loadSetting(name):
 
 def convertTimetoMinutes(time):
 
-    listTime = time[0].split(":")
+    if isinstance(time, tuple):
+        listTime = time[0].split(":")
+    else:
+        listTime = time.split(":")
 
     hoursToMinutes = int(listTime[0]) * 60
     overallMinutes = hoursToMinutes + int(listTime[1])
@@ -363,7 +411,7 @@ def convertTimetoMinutes(time):
 
 def convertMinutestoTimeString(timeInMinutes):
 
-    minutes = timeInMinutes % 60
+    minutes = int(timeInMinutes) % 60
     hours = int((timeInMinutes - minutes) / 60)
 
     # add 0 in front of number smaller than 10
