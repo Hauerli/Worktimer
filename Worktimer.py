@@ -1,5 +1,6 @@
 import datetime as dt
 import tkinter as tk
+from tkinter import messagebox
 import tkinter.ttk as ttk
 import sqlite3
 import database as db
@@ -151,9 +152,25 @@ class MainApp:
         self.b_SaveTimeWeek = tk.Button(
             self.t_customizing,
             text="Save",
+            width=7,
             command=lambda: insertWeekhours(self.varTimeWeek.get()),
         )
-        self.b_SaveTimeWeek.grid(row=0, column=3)
+        self.b_SaveTimeWeek.grid(row=0, column=2)
+        # Update Label
+        self.l_deleteRow = tk.Label(self.t_customizing, text="Delete Date: ")
+        self.l_deleteRow.grid(row=1, column=0)
+        self.varDeleteRow = tk.StringVar()
+        self.e_DeleteRow = tk.Entry(
+            self.t_customizing, textvariable=self.varDeleteRow, width=10
+        )
+        self.e_DeleteRow.grid(row=1, column=1)
+        self.b_DeleteRow = tk.Button(
+            self.t_customizing,
+            text="Delete",
+            width=7,
+            command=lambda: deleteDate(self.varDeleteRow.get()),
+        )
+        self.b_DeleteRow.grid(row=1, column=2)
 
     def run(self):
         self.parent.mainloop()
@@ -163,7 +180,6 @@ class MainApp:
 
     # trigger visibility of custom break field
     def triggerBreakfieldVisibility(self):
-        catcher = self.varBreak.get()
         if self.varBreak.get() == 1:
             self.e_break.grid_remove()
             self.b_BreakNo.grid(row=4, column=1, sticky="w")
@@ -184,6 +200,22 @@ class Autoresized_Notebook(ttk.Notebook):
 
         tab = event.widget.nametowidget(event.widget.select())
         event.widget.configure(height=tab.winfo_reqheight(), width=tab.winfo_reqwidth())
+
+
+def deleteDate(date):
+    try:
+        con = db.db_connect()
+        cur = con.cursor()
+        cur.execute("DELETE FROM worktime WHERE DATUM=?", [date])
+        con.commit()
+        messagebox.showinfo("Info", date + " wurde erfolgreich gelöscht")
+    except sqlite3.Error as error:
+        print("Module deleteDate: ", error)
+    finally:
+        if cur:
+            cur.close()
+        if con:
+            con.close()
 
 
 # remove all entries from Treeview
@@ -277,14 +309,6 @@ def saveGehen(dat, tim, didbreak, custombreak):
         if con:
             con.close()
 
-
-"""def insertBreak(dat, varbreak, con, cur):
-    try:
-        cur.execute("UPDATE worktime SET PAUSE=? WHERE DATUM=?", (varbreak, dat))
-        con.commit()
-        calcWorktime(dat, varbreak, con, cur)  # call calcWorktime
-    except sqlite3.Error as error:
-        print("Module insertBreak: ", error)"""
 
 
 def insertWeekhours(weekhours):
