@@ -29,7 +29,9 @@ class MainApp:
         self.tab_parent.add(self.t_overview, text="Uebersicht")
         self.tab_parent.grid(row=0, column=0, sticky="nsew")
         # createsub frames
-        self.f_Input = tk.Frame(self.t_main)
+        self.f_Input = tk.Frame(
+            self.t_main,
+        )
         self.f_Input.grid(row=0, column=0)
         self.f_Button = tk.Frame(self.t_main)
         self.f_Button.grid(row=1, column=0)
@@ -73,20 +75,38 @@ class MainApp:
             ),
         )
         self.e_Time.grid(row=2, column=1)
+
         # Break label
-        self.l_Break = tk.Label(self.f_Input, text="Pause:")
+        self.l_Break = tk.Label(self.f_Input, text="Standard Pause:")
         self.l_Break.grid(row=3, column=0)
         # Break Radiobutton
+        self.varBreakInput = tk.StringVar()
+        self.varBreakInput.set("01:00")
+        self.varBreakInput.trace(
+            "w",
+            lambda name, index, mode, varTime=self.varBreakInput: entryUpdateEndHour(
+                self.e_break
+            ),
+        )
+        self.e_break = tk.Entry(self.f_Input, textvariable=self.varBreakInput, width=10)
         self.varBreak = tk.IntVar()
         self.b_BreakYes = tk.Radiobutton(
-            self.f_Input, text="Ja", variable=self.varBreak, value=1
+            self.f_Input,
+            text="Ja",
+            variable=self.varBreak,
+            value=1,
+            command=lambda: self.triggerBreakfieldVisibility(),
         )
-        self.b_BreakYes.grid(row=4, column=0)
+        self.b_BreakYes.grid(row=3, column=1, sticky="w")
         self.b_BreakNo = tk.Radiobutton(
-            self.f_Input, text="Nein", variable=self.varBreak, value=0
+            self.f_Input,
+            text="Nein",
+            variable=self.varBreak,
+            value=0,
+            command=lambda: self.triggerBreakfieldVisibility(),
         )
         self.varBreak.set(1)
-        self.b_BreakNo.grid(row=4, column=1)
+        self.b_BreakNo.grid(row=4, column=1, sticky="w")
         # Button Kommen
         self.b_Kommen = tk.Button(
             self.f_Button,
@@ -99,7 +119,10 @@ class MainApp:
             self.f_Button,
             text="Gehen",
             command=lambda: saveGehen(
-                self.varDate.get(), self.varTime.get(), self.varBreak.get()
+                self.varDate.get(),
+                self.varTime.get(),
+                self.varBreak.get(),
+                self.varBreakInput.get(),
             ),
         )
         self.b_Gehen.grid(row=0, column=1)
@@ -136,6 +159,16 @@ class MainApp:
 
     def kill(self):
         self.parent.destroy()
+
+    # trigger visibility of custom break field
+    def triggerBreakfieldVisibility(self):
+        catcher = self.varBreak.get()
+        if self.varBreak.get() == 1:
+            self.e_break.grid_remove()
+            self.b_BreakNo.grid(row=4, column=1, sticky="w")
+        else:
+            self.e_break.grid(row=4, column=1, sticky="w")
+            self.b_BreakNo.grid_remove()
 
 
 # Resize Window based on active tab size
@@ -228,13 +261,13 @@ def saveKommen(dat, tim):
             con.close()
 
 
-def saveGehen(dat, tim, didbreak):
+def saveGehen(dat, tim, didbreak, custombreak):
     try:
         con = db.db_connect()
         cur = con.cursor()
         cur.execute("UPDATE worktime SET BIS=? WHERE DATUM=?", (tim, dat))
 
-        insertBreak(dat, didbreak, con, cur)
+        calcWorktime(dat, didbreak, custombreak, con, cur)
     except sqlite3.Error as error:
         print("Module saveGehen: ", error)
     finally:
@@ -244,13 +277,13 @@ def saveGehen(dat, tim, didbreak):
             con.close()
 
 
-def insertBreak(dat, didbreak, con, cur):
+"""def insertBreak(dat, varbreak, con, cur):
     try:
-        cur.execute("UPDATE worktime SET PAUSE=? WHERE DATUM=?", (didbreak, dat))
+        cur.execute("UPDATE worktime SET PAUSE=? WHERE DATUM=?", (varbreak, dat))
         con.commit()
-        calcWorktime(dat, didbreak, con, cur)  # call calcWorktime
+        calcWorktime(dat, varbreak, con, cur)  # call calcWorktime
     except sqlite3.Error as error:
-        print("Module insertBreak: ", error)
+        print("Module insertBreak: ", error)"""
 
 
 def insertWeekhours(weekhours):
@@ -271,8 +304,10 @@ def insertWeekhours(weekhours):
             con.close()
 
 
-def calcWorktime(date, didbreak, con, cur):
+def calcWorktime(date, didbreak, custombreak, con, cur):
     try:
+
+        # select necessary data from db
         cur.execute(
             "SELECT VON FROM worktime WHERE DATUM=?", [date]
         )  # select von from row where date
@@ -287,16 +322,24 @@ def calcWorktime(date, didbreak, con, cur):
 
         deltaInMinutes = bisInMinutes - vonInMinutes
 
-        # Wenn Pause True
-        if didbreak == 1:
+        custombreak = convertTimetoMinutes(custombreak)
+
+        if didbreak == True:
             if deltaInMinutes > 360:  # if worktime bigger than 6 hours
-                deltaInMinutes = deltaInMinutes - 60
+                custombreak = 60
+                deltaInMinutes = deltaInMinutes - custombreak
             elif (
                 deltaInMinutes <= 360 and deltaInMinutes > 270
             ):  # if worktime between 5:59 hours and 4:30 hours
-                deltaInMinutes = deltaInMinutes - 15
+                custombreak = 15
+                deltaInMinutes = deltaInMinutes - custombreak
+        else:
+            deltaInMinutes = deltaInMinutes - custombreak
 
         strTime = convertMinutestoTimeString(deltaInMinutes)
+        strBreak = convertMinutestoTimeString(custombreak)
+        # insert break
+        cur.execute("UPDATE worktime SET PAUSE=? WHERE DATUM=?", (strBreak, date))
 
         cur.execute("UPDATE worktime SET ARBEITSZEIT=? WHERE DATUM=?", (strTime, date))
         con.commit()
